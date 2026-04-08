@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ch dd rt</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  font-family: 'Roboto Condensed', sans-serif;
+}
+body {
+  background-image: url('images/background.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.item {
+  width: 180px;
+  height: 180px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: absolute;
+  cursor: pointer;
+  z-index: 50;
+  transition: transform 0.2s;
+}
+
+.flipped { transform: scaleX(-1); }
+
+.start-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  padding: 18px 40px;
+  cursor: pointer;
+  border: none;
+  border-radius: 16px;
+  background: #6B8E23;
+  color: white;
+  text-shadow: 0 0 6px gold;
+  animation: pulseGlow 2s infinite ease-in-out, shakeMagic 1.6s infinite ease-in-out;
+  z-index: 200;
+}
+
+@keyframes pulseGlow {
+  0%   { box-shadow: 0 0 8px rgba(255,215,0,0.5); }
+  50%  { box-shadow: 0 0 22px rgba(255,215,0,0.95); }
+  100% { box-shadow: 0 0 8px rgba(255,215,0,0.5); }
+}
+
+@keyframes shakeMagic {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  25% { transform: translate(calc(-50% + 2px), calc(-50% - 1px)) rotate(-1deg); }
+  50% { transform: translate(calc(-50% - 2px), calc(-50% + 1px)) rotate(1deg); }
+  75% { transform: translate(calc(-50% + 1px), calc(-50% + 2px)) rotate(-1deg); }
+  100% { transform: translate(-50%, -50%) rotate(0deg); }
+}
+
+#scrambleBox {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  max-width: 700px;
+  background: rgba(0,0,0,0.7);
+  padding: 32px;
+  border-radius: 16px;
+  display: none;
+  z-index: 400;
+  box-shadow: 0 0 14px rgba(0,255,100,0.8), 0 0 22px rgba(0,255,100,0.6), inset 0 0 20px rgba(0,255,100,0.4);
+}
+
+.scramble-words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 25px;
+  justify-content: center;
+}
+
+.word {
+  padding: 10px 16px;
+  background: #f0f0f0;
+  border-radius: 12px;
+  font-size: 30px;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s;
+}
+
+.word.dragging { transform: scale(0.9); opacity: 0.8; }
+.gold-loop { animation: goldLoop 1.7s infinite ease-in-out; }
+
+@keyframes goldLoop {
+  0%   { box-shadow: 0 0 0px gold; }
+  50%  { box-shadow: 0 0 22px gold; }
+  100% { box-shadow: 0 0 0px gold; }
+}
+
+#finalOverlay {
+  position: absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  z-index: 500;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  color: white;
+  font-size: 64px;
+  text-align: center;
+  overflow: hidden;
+}
+#finalOverlay canvas { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; }
+
+</style>
+</head>
+<body>
+
+<div class="start-btn" id="startBtn">Start</div>
+<div id="scrambleBox"><div class="scramble-words" id="scrWords"></div></div>
+<div id="finalOverlay">Well done!</div>
+
+<script>
+(function() {
+  const mark = "cmFkaWF0ZWFjaGVy"; 
+  const check = mark.split('').reduce((a,b)=>a+b.charCodeAt(0),0);
+})();
+
+const images = [
+  "images/gift1.png",
+  "images/gift2.png",
+  "images/gift3.png"
+];
+
+let sentences = [
+  "is she sleeping now?",
+  "are we making a sandcastle now?",
+  "are you flying a kite now?",
+  "is she playing computer games now.",
+  "is Tom drinking water now?",
+  "are Tom and Dan riding bikes?",
+  "are they watching TV now?",
+  "are your mother and father eating ice cream?",
+  "is the boy having good time?",
+  "are the boys having good time?",
+  "are they playing soccer?",
+  "is Olya painting a picture now?",
+  "are your friends dancing?",
+  "is your grandma watering the plants?",
+  "Is your brother walking now?."
+];
+
+let items=[], currentItem=null, currentSentence="", completed=0;
+
+function createItem(imgIndex){
+  const item=document.createElement("div");
+  item.className="item";
+  item.style.backgroundImage=`url('${images[imgIndex]}')`;
+  let x=Math.random()*(window.innerWidth-180), y=Math.random()*(window.innerHeight-180);
+  let dx=0.6+Math.random(), dy=0.6+Math.random();
+  item.style.left=x+"px"; item.style.top=y+"px";
+  item.dataset.dx=dx; item.dataset.dy=dy;
+  item.addEventListener("click", ()=>{
+    currentItem=item;
+    openScrambled();
+    stopMovement();
+    item.style.pointerEvents="none";
+  });
+  document.body.appendChild(item);
+  items.push(item);
+
+  function move(){
+    x+=dx; y+=dy;
+    if(x<=0 || x+180>=window.innerWidth){dx=-dx; item.classList.toggle("flipped");}
+    if(y<=0){dy=Math.abs(dy);} if(y+180>=window.innerHeight){dy=-Math.abs(dy);}
+    item.style.left=x+"px"; item.style.top=y+"px"; item.dataset.dx=dx; item.dataset.dy=dy;
+    item._frame=requestAnimationFrame(move);
+  }
+  move();
+}
+
+function stopMovement(){ items.forEach(i=>cancelAnimationFrame(i._frame)); }
+function resumeMovement(){
+  items.forEach(i=>i.style.pointerEvents="auto");
+  items.forEach(i=>{
+    i._frame=requestAnimationFrame(function move(){
+      let x=parseFloat(i.style.left), y=parseFloat(i.style.top);
+      let dx=parseFloat(i.dataset.dx), dy=parseFloat(i.dataset.dy);
+      x+=dx; y+=dy;
+      if(x<=0||x+180>=window.innerWidth){dx=-dx;i.classList.toggle("flipped");}
+      if(y<=0){dy=Math.abs(dy);} if(y+180>=window.innerHeight){dy=-Math.abs(dy);}
+      i.style.left=x+"px"; i.style.top=y+"px"; i.dataset.dx=dx; i.dataset.dy=dy;
+      i._frame=requestAnimationFrame(move);
+    });
+  });
+}
+
+document.getElementById("startBtn").addEventListener("click", ()=>{
+  document.getElementById("startBtn").style.display="none";
+  items.forEach(i=>i.remove()); items=[]; completed=0;
+  sentences = [
+    "is she sleeping now?",
+  "are we making a sandcastle now?",
+  "are you flying a kite now?",
+  "is she playing computer games now.",
+  "is Tom drinking water now?",
+  "are Tom and Dan riding bikes?",
+  "are they watching TV now?",
+  "are your mother and father eating ice cream?",
+  "is the boy having good time?",
+  "are the boys having good time?",
+  "are they playing soccer?",
+  "is Olya painting a picture now?",
+  "are your friends dancing?",
+  "is your grandma watering the plants?",
+  "Is your brother walking now?."
+  ];
+  for(let i=0;i<5;i++) createItem(0);
+  for(let i=0;i<5;i++) createItem(1);
+  for(let i=0;i<5;i++) createItem(2);
+});
+
+function openScrambled(){
+  const box=document.getElementById("scrambleBox");
+  const container=document.getElementById("scrWords");
+  container.innerHTML="";
+  currentSentence=sentences.shift();
+  let words=currentSentence.replace(/[.]/g,"").split(" ");
+  words[words.length-1]+=".";
+  words=words.sort(()=>Math.random()-0.5);
+  words.forEach(w=>{
+    const span=document.createElement("div");
+    span.className="word"; span.textContent=w; span.draggable=true;
+    span.addEventListener("dragstart", dragStart);
+    span.addEventListener("dragend", dragEnd);
+    container.appendChild(span);
+  });
+  container.addEventListener("dragover", dragOver);
+  box.style.display="block";
+}
+
+let dragged=null;
+function dragStart(){ dragged=this; this.classList.add("dragging"); }
+function dragEnd(){ this.classList.remove("dragging"); checkSentence(); }
+function dragOver(e){ e.preventDefault(); const container=document.getElementById("scrWords"); const after=getDragAfterElement(container,e.clientX); if(after==null) container.appendChild(dragged); else container.insertBefore(dragged,after);}
+function getDragAfterElement(container,x){ const elements=[...container.querySelectorAll(".word:not(.dragging)")]; return elements.reduce((closest,child)=>{ const rect=child.getBoundingClientRect(); const offset=x-rect.left-rect.width/2; if(offset<0 && offset>closest.offset) return {offset:offset,element:child}; else return closest; },{offset:Number.NEGATIVE_INFINITY}).element;}
+
+function checkSentence(){
+  const words=[...document.querySelectorAll("#scrWords .word")].map(w=>w.textContent);
+  const correct=currentSentence.replace(/[.]/g,"").split(" ");
+  correct[correct.length-1]+=".";
+  if(JSON.stringify(words)===JSON.stringify(correct)) successGlow();
+}
+
+function successGlow(){
+  document.querySelectorAll("#scrWords .word").forEach(w=>w.classList.add("gold-loop"));
+  setTimeout(()=>{
+    document.getElementById("scrambleBox").style.display="none";
+    if(currentItem) currentItem.remove();
+    completed++;
+    if(completed>=15) showFinalOverlay();
+    else resumeMovement();
+  },500);
+}
+
+function showFinalOverlay(){
+  const overlay=document.getElementById("finalOverlay");
+  overlay.style.display="flex";
+  launchGoldenSalute();
+}
+
+function launchGoldenSalute(){
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+  document.getElementById('finalOverlay').appendChild(canvas);
+
+  let particles=[];
+  const colors=['#FFD700','#FFE066','#FFFACD','#FFD700','#FFD700'];
+
+  for(let i=0;i<100;i++){
+    particles.push({
+      x:Math.random()*canvas.width,
+      y:canvas.height,
+      vx:(Math.random()-0.5)*6,
+      vy:-Math.random()*15-5,
+      size:Math.random()*4+2,
+      color: colors[Math.floor(Math.random()*colors.length)]
+    });
+  }
+
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.vy+=0.3;
+      p.x+=p.vx; p.y+=p.vy;
+      ctx.fillStyle=p.color;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      ctx.fill();
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+</script>
+</body>
+</html>
