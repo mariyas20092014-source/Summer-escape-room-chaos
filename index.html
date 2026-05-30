@@ -20,6 +20,16 @@ body {
   background-size: cover;
   background-position: center;
 }
+  
+.background-video {
+  position: fixed; 
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover; 
+  z-index: -1; 
+}
 
 .item {
   width: 180px;
@@ -128,6 +138,10 @@ body {
 </style>
 </head>
 <body>
+  
+<video class="background-video" autoplay loop muted playsinline>
+  <source src="images/videobg1.mp4" type="video/mp4">
+</video>
 
 <div class="start-btn" id="startBtn">Start</div>
 <div id="scrambleBox"><div class="scramble-words" id="scrWords"></div></div>
